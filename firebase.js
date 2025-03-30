@@ -21,11 +21,23 @@ const sensorRef = ref(db, "/pad/sensor");
 // 🔄 실시간 데이터 가져오기
 onValue(sensorRef, (snapshot) => {
   const data = snapshot.val();
+  const sensorElement = document.getElementById("sensor");
+  const circleElement = document.getElementById("circle");
 
-  // 데이터가 객체인지 확인 후 처리
-  if (typeof data === "object") {
-    document.getElementById("sensor").innerText = data.value || JSON.stringify(data);
+  // 데이터가 숫자인지 확인
+  let sensorValue = typeof data === "object" ? data.value : data;
+  
+  // 값 출력
+  sensorElement.innerText = sensorValue;
+
+  // 🔵 동그라미 색상 변경
+  if (sensorValue == 0) {
+    circleElement.style.backgroundColor = "green";  // 초록색
+  } else if (sensorValue == 1) {
+    circleElement.style.backgroundColor = "yellow"; // 노란색
+  } else if (sensorValue == 3) {
+    circleElement.style.backgroundColor = "red";    // 빨간색
   } else {
-    document.getElementById("sensor").innerText = data;
+    circleElement.style.backgroundColor = "gray";   // 기본값
   }
 });
