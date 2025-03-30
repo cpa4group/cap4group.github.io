@@ -33,9 +33,37 @@ onValue(sensorRef, (snapshot) => {
   // 🔵 동그라미 색상 변경
   if (sensorValue == 0) {
     circleElement.style.backgroundColor = "green";  // 초록색
+    stopSound();  // 초록색일 때 소리 멈춤
   } else if (sensorValue == 1) {
     circleElement.style.backgroundColor = "yellow"; // 노란색
+    stopSound();  // 노란색일 때 소리 멈춤
   } else if (sensorValue == 2) {
     circleElement.style.backgroundColor = "red";    // 빨간색
+    startSound(); // 빨간색일 때 소리 반복 시작
   }
 });
+
+// 기본 소리 생성 및 재생
+let soundInterval;
+
+function startSound() {
+  if (!soundInterval) {  // 소리가 이미 반복 중이 아니라면
+    soundInterval = setInterval(() => {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();  // 오디오 컨텍스트 생성
+      const oscillator = audioContext.createOscillator();  // 음파 생성기
+      oscillator.type = "square";  // 음파의 형태 (square, sine 등)
+      oscillator.frequency.setValueAtTime(440, audioContext.currentTime);  // 주파수 설정 (440Hz = A4 음)
+      oscillator.connect(audioContext.destination);  // 소리 출력
+
+      oscillator.start();  // 소리 시작
+      oscillator.stop(audioContext.currentTime + 0.5);  // 0.5초 후에 소리 종료
+    }, 1000);  // 1초마다 소리 반복
+  }
+}
+
+function stopSound() {
+  if (soundInterval) {
+    clearInterval(soundInterval);  // 반복되는 소리 정지
+    soundInterval = null;  // 반복 정지 상태로 설정
+  }
+}
