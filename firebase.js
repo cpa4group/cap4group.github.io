@@ -37,7 +37,5 @@ onValue(sensorRef, (snapshot) => {
     circleElement.style.backgroundColor = "yellow"; // 노란색
   } else if (sensorValue == 3) {
     circleElement.style.backgroundColor = "red";    // 빨간색
-  } else {
-    circleElement.style.backgroundColor = "gray";   // 기본값
   }
 });
