@@ -3,9 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <title>ESP32 실시간 센서값</title>
+  <style>
+    /* 기본 동그라미 스타일 */
+    .circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: gray; /* 기본 색상 */
+      display: inline-block;
+      margin-left: 10px;
+    }
+  </style>
 </head>
 <body>
   <h1>센서값: <span id="sensor">로딩 중...</span></h1>
+  <div id="circle" class="circle"></div> <!-- 동그라미 표시 -->
 
   <!-- Firebase 기능을 불러오는 JavaScript -->
   <script type="module" src="firebase.js"></script>
