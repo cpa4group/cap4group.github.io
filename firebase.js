@@ -16,29 +16,53 @@ const firebaseConfig = {
 // 🔥 Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const sensorRef = ref(db, "/pad/sensor");
+const sensorRef1 = ref(db, "/pad/sensor");
+const sensorRef2 = ref(db, "/pad/sensor2");  // 새 센서의 데이터 경로 추가
 
-// 🔄 실시간 데이터 가져오기
-onValue(sensorRef, (snapshot) => {
+// 🔄 실시간 데이터 가져오기 (sensor1)
+onValue(sensorRef1, (snapshot) => {
   const data = snapshot.val();
-  const sensorElement = document.getElementById("sensor");
-  const circleElement = document.getElementById("circle");
+  const sensorElement1 = document.getElementById("sensor1");
+  const circleElement1 = document.getElementById("circle1");
 
-  // 데이터가 숫자인지 확인
-  let sensorValue = typeof data === "object" ? data.value : data;
+  let sensorValue1 = typeof data === "object" ? data.value : data;
   
   // 값 출력
-  sensorElement.innerText = sensorValue;
+  sensorElement1.innerText = sensorValue1;
 
-  // 🔵 동그라미 색상 변경
-  if (sensorValue == 0) {
-    circleElement.style.backgroundColor = "green";  // 초록색
+  // 🔵 동그라미 색상 변경 (sensor1)
+  if (sensorValue1 == 0) {
+    circleElement1.style.backgroundColor = "green";
     stopSound();  // 초록색일 때 소리 멈춤
-  } else if (sensorValue == 1) {
-    circleElement.style.backgroundColor = "yellow"; // 노란색
+  } else if (sensorValue1 == 1) {
+    circleElement1.style.backgroundColor = "yellow";
     stopSound();  // 노란색일 때 소리 멈춤
-  } else if (sensorValue == 2) {
-    circleElement.style.backgroundColor = "red";    // 빨간색
+  } else if (sensorValue1 == 2) {
+    circleElement1.style.backgroundColor = "red";
+    startSound(); // 빨간색일 때 소리 반복 시작
+  }
+});
+
+// 🔄 실시간 데이터 가져오기 (sensor2)
+onValue(sensorRef2, (snapshot) => {
+  const data = snapshot.val();
+  const sensorElement2 = document.getElementById("sensor2");
+  const circleElement2 = document.getElementById("circle2");
+
+  let sensorValue2 = typeof data === "object" ? data.value : data;
+
+  // 값 출력
+  sensorElement2.innerText = sensorValue2;
+
+  // 🔵 동그라미 색상 변경 (sensor2)
+  if (sensorValue2 == 0) {
+    circleElement2.style.backgroundColor = "green";
+    stopSound();  // 초록색일 때 소리 멈춤
+  } else if (sensorValue2 == 1) {
+    circleElement2.style.backgroundColor = "yellow";
+    stopSound();  // 노란색일 때 소리 멈춤
+  } else if (sensorValue2 == 2) {
+    circleElement2.style.backgroundColor = "red";
     startSound(); // 빨간색일 때 소리 반복 시작
   }
 });
