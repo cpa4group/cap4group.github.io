@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <title>ESP32 실시간 센서값</title>
+</head>
+<body>
+ <h1>센서값: <span id="sensor">로딩 중...</span></h1>
+
+
+ <!-- Firebase 모듈 CDN 로딩 및 코드 -->
+ <script type="module">
+   // 모듈 import
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+   import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
+   import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
+
+
+   // Firebase 설정
+   const firebaseConfig = {
+     apiKey: "AIzaSyAH18MqEDo-SoZFruYnf1kCB_r43AJScH8",
+     authDomain: "kmucapstone4group-2c0d3.firebaseapp.com",
+     databaseURL: "https://kmucapstone4group-2c0d3-default-rtdb.firebaseio.com",
+     projectId: "kmucapstone4group-2c0d3",
+     storageBucket: "kmucapstone4group-2c0d3.firebasestorage.app",
+     messagingSenderId: "906625063859",
+     appId: "1:906625063859:web:0f7f509f9b28bceb4989c6",
+     measurementId: "G-KX1FNVYRRC"
+   };
+
+
+   // Firebase 초기화
+   const app = initializeApp(firebaseConfig);
+   const analytics = getAnalytics(app);
+
+
+   // Realtime Database 사용
+   const db = getDatabase(app);
+   const sensorRef = ref(db, "/pad/sensor");
+
+
+   // 실시간 센서값 읽기
+   onValue(sensorRef, (snapshot) => {
+     const value = snapshot.val();
+     document.getElementById("sensor").innerText = value;
+   });
+ </script>
+</body>
+</html>
