@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
 
-// 🔥 Firebase 설정
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyAH18MqEDo-SoZFruYnf1kCB_r43AJScH8",
   authDomain: "kmucapstone4group-2c0d3.firebaseapp.com",
@@ -9,85 +9,127 @@ const firebaseConfig = {
   projectId: "kmucapstone4group-2c0d3",
   storageBucket: "kmucapstone4group-2c0d3.appspot.com",
   messagingSenderId: "906625063859",
-  appId: "1:906625063859:web:0f7f509f9b28bceb4989c6",
-  measurementId: "G-KX1FNVYRRC"
+  appId: "1:906625063859:web:0f7f509f9b28bceb4989c6"
 };
 
-// 🔥 Firebase 초기화
+// 초기화
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const sensorRef1 = ref(db, "/pad/sensor");
-const sensorRef2 = ref(db, "/pad/sensor2");  // 새 센서의 데이터 경로 추가
+const sensorRef = ref(db, "/sensors");
+const container = document.getElementById("sensorContainer");
 
-// 🔄 실시간 데이터 가져오기 (sensor1)
-onValue(sensorRef1, (snapshot) => {
-  const data = snapshot.val();
-  const sensorElement1 = document.getElementById("sensor1");
-  const circleElement1 = document.getElementById("circle1");
+// 오디오 템플릿 복사용
+const audioTemplate = document.getElementById("alertSoundTemplate");
 
-  let sensorValue1 = typeof data === "object" ? data.value : data;
-  
-  // 값 출력
-  sensorElement1.innerText = sensorValue1;
+let previousValues = {};
 
-  // 🔵 동그라미 색상 변경 (sensor1)
-  if (sensorValue1 == 0) {
-    circleElement1.style.backgroundColor = "green";
-    stopSound();  // 초록색일 때 소리 멈춤
-  } else if (sensorValue1 == 1) {
-    circleElement1.style.backgroundColor = "yellow";
-    stopSound();  // 노란색일 때 소리 멈춤
-  } else if (sensorValue1 == 2) {
-    circleElement1.style.backgroundColor = "red";
-    startSound(); // 빨간색일 때 소리 반복 시작
+onValue(sensorRef, (snapshot) => {
+  const sensors = snapshot.val() || {};
+  container.innerHTML = "";
+
+  for (let id in sensors) {
+    const sensor = sensors[id];
+    const prev = previousValues[id];
+    const currentValue = sensor.value;
+    previousValues[id] = currentValue;
+
+    const card = document.createElement("div");
+    card.className = "sensor-card";
+
+    if (currentValue === 2) {
+      card.classList.add("warning");
+    }
+
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "sensor-row";
+
+    // ===== 이름 =====
+    const nameBox = document.createElement("div");
+    nameBox.className = "sensor-item sensor-name";
+    nameBox.textContent = `이름: ${sensor.name || id}`;
+
+    // ===== 상태 =====
+    const statusBox = document.createElement("div");
+    statusBox.className = "sensor-item sensor-status";
+
+    const statusLabel = document.createElement("span");
+    statusLabel.textContent = "상태:";
+    const circle = document.createElement("div");
+    circle.className = "circle";
+
+    if (currentValue === 0) circle.style.backgroundColor = "green";
+    else if (currentValue === 1) circle.style.backgroundColor = "orange";
+    else if (currentValue === 2) circle.style.backgroundColor = "red";
+    else circle.style.backgroundColor = "gray";
+
+    statusBox.appendChild(statusLabel);
+    statusBox.appendChild(circle);
+
+    // ===== 주소 =====
+    const addrBox = document.createElement("div");
+    addrBox.className = "sensor-item sensor-address";
+
+    const addrLabel = document.createElement("span");
+    addrLabel.textContent = "주소:";
+    const addrInput = document.createElement("input");
+    addrInput.type = "text";
+    addrInput.value = sensor.address || "";
+
+    const addrBtn = document.createElement("button");
+    addrBtn.textContent = "저장";
+    addrBtn.onclick = () => {
+      const address = addrInput.value;
+      update(ref(db, `/sensors/${id}`), { address })
+        .then(() => console.log("✅ 주소 저장 성공"))
+        .catch((err) => console.error("❌ 주소 저장 실패:", err));
+    };
+
+    addrBox.appendChild(addrLabel);
+    addrBox.appendChild(addrInput);
+    addrBox.appendChild(addrBtn);
+
+    // ===== 소리 설정 =====
+    const soundBox = document.createElement("div");
+    soundBox.className = "sensor-item sensor-sound";
+
+    const audio = audioTemplate.cloneNode();
+    audio.removeAttribute("id");
+    audio.style.display = "none";
+    audio.volume = 1;
+    document.body.appendChild(audio); // DOM에 삽입해야 재생 가능
+
+    const soundToggle = document.createElement("input");
+    soundToggle.type = "checkbox";
+    soundToggle.checked = true;
+
+    const volumeSlider = document.createElement("input");
+    volumeSlider.type = "range";
+    volumeSlider.min = 0;
+    volumeSlider.max = 1;
+    volumeSlider.step = 0.01;
+    volumeSlider.value = 1;
+
+    volumeSlider.addEventListener("input", () => {
+      audio.volume = volumeSlider.value;
+    });
+
+    soundBox.appendChild(soundToggle);
+    soundBox.appendChild(volumeSlider);
+
+    // ===== 소리 조건: 2로 바뀌었을 때 재생 =====
+    if (currentValue === 2 && prev !== 2 && soundToggle.checked) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.warn("🔇 알림 소리 실패:", e));
+    }
+
+    // ===== 카드 구성 =====
+    rowDiv.appendChild(nameBox);
+    rowDiv.appendChild(statusBox);
+    rowDiv.appendChild(addrBox);
+    rowDiv.appendChild(soundBox);
+
+    card.appendChild(rowDiv);
+    container.appendChild(card);
   }
 });
 
-// 🔄 실시간 데이터 가져오기 (sensor2)
-onValue(sensorRef2, (snapshot) => {
-  const data = snapshot.val();
-  const sensorElement2 = document.getElementById("sensor2");
-  const circleElement2 = document.getElementById("circle2");
-
-  let sensorValue2 = typeof data === "object" ? data.value : data;
-
-  // 값 출력
-  sensorElement2.innerText = sensorValue2;
-
-  // 🔵 동그라미 색상 변경 (sensor2)
-  if (sensorValue2 == 0) {
-    circleElement2.style.backgroundColor = "green";
-    stopSound();  // 초록색일 때 소리 멈춤
-  } else if (sensorValue2 == 1) {
-    circleElement2.style.backgroundColor = "yellow";
-    stopSound();  // 노란색일 때 소리 멈춤
-  } else if (sensorValue2 == 2) {
-    circleElement2.style.backgroundColor = "red";
-    startSound(); // 빨간색일 때 소리 반복 시작
-  }
-});
-
-// 기본 소리 생성 및 재생
-let soundInterval;
-
-function startSound() {
-  if (!soundInterval) {  // 소리가 이미 반복 중이 아니라면
-    soundInterval = setInterval(() => {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();  // 오디오 컨텍스트 생성
-      const oscillator = audioContext.createOscillator();  // 음파 생성기
-      oscillator.type = "square";  // 음파의 형태 (square, sine 등)
-      oscillator.frequency.setValueAtTime(440, audioContext.currentTime);  // 주파수 설정 (440Hz = A4 음)
-      oscillator.connect(audioContext.destination);  // 소리 출력
-
-      oscillator.start();  // 소리 시작
-      oscillator.stop(audioContext.currentTime + 0.5);  // 0.5초 후에 소리 종료
-    }, 1000);  // 1초마다 소리 반복
-  }
-}
-
-function stopSound() {
-  if (soundInterval) {
-    clearInterval(soundInterval);  // 반복되는 소리 정지
-    soundInterval = null;  // 반복 정지 상태로 설정
-  }
-}
