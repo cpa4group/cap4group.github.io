@@ -1,38 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>ESP32 실시간 센서값</title>
-  <!-- 외부 CSS 파일을 링크 -->
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <title>ESP32 센서 대시부드</title>
+  <link rel="stylesheet" href="2025.4.1.css" />
 </head>
 <body>
-  <h1>ESP32 실시간 센서값</h1>
+  <h1>📡 ESP32 센서 상태 모니터링</h1>
 
-  <!-- 테이블 구조 -->
-  <table>
-    <thead>
-      <tr>
-        <th>센서 이름</th>
-        <th>상태</th> 
-      
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>김씨 할아버지</td>
-        <td><div id="circle1" class="circle"></div></td> 
-        <td><span id="sensor1">로딩 중...</span></td> 
-      </tr>
-      <tr>
-        <td>김씨 할머니 </td>
-        <td><div id="circle2" class="circle"></div></td> 
-        <td><span id="sensor2">로딩 중...</span></td> 
-      </tr>
-    </tbody>
-  </table>
+  <!-- 센서 카드 표시 -->
+  <div class="sensor-container" id="sensorContainer"></div>
 
-  <!-- Firebase 기능을 불러오는 JavaScript -->
-  <script type="module" src="firebase.js"></script>
+  <!-- 소리 플레이어: 센서별 -->
+  <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display: none"></audio>
+
+  <script type="module" src="2025.4.1.js"></script>
 </body>
 </html>
