@@ -1,80 +1,112 @@
-/* 전체 배경과 기본 폰트 (귀여운 느낌의 폰트 적용) */
 body {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', cursive, sans-serif;
-    color: #333;
-    margin: 20px;
+    font-family: 'Segoe UI', sans-serif;
+    background: #cceeff;
+    margin: 0;
+    padding: 20px;
   }
-   /* 테이블 컨테이너 스타일 (둥근 모서리와 부드러운 그림자) */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background-color: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-   /* 테이블 헤더 스타일 (부드러운 그라데이션과 귀여운 느낌의 색상) */
-  th {
-    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-    color: #fff;
-    padding: 16px;
-    text-transform: uppercase;
-    font-weight: bold;
-    border: none;
-  }
-   /* 테이블 셀 기본 스타일 */
-  th, td {
-    padding: 16px;
+  
+  h1 {
     text-align: center;
-    border-bottom: 1px solid #eee;
-  }
-   /* 마지막 행의 하단 테두리 제거 */
-  tr:last-child td {
-    border-bottom: none;
-  }
-   /* 짝수 행 배경색 (가독성 향상) */
-  tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-   /* 마우스 오버 시 행 색상 변화 (귀여운 느낌의 부드러운 변화) */
-  tr:hover {
-    background-color: #ffe6e6;
-  }
-   /* 동그라미 상태 아이콘 스타일 */
-  .circle {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-left: 10px;
-    transition: transform 0.3s ease;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-   /* 동그라미에 마우스 오버 시 귀여운 확대 효과 */
-  .circle:hover {
-    transform: scale(1.2);
-  }
-   /* 상태에 따른 색상 (정확히 green, yellow, red) */
-  .green {
-    background-color: green;
-  }
-   .yellow {
-    background-color: yellow;
-  }
-   .red {
-    background-color: red;
-  }
-   /* 테이블의 첫 번째 열 (센서 이름) 강조 */
-  td:first-child {
-    font-weight: bold;
     color: #333;
+    margin-bottom: 20px;
   }
-   /* 세 번째 열(센서값) 숨기기 */
-  table th:nth-child(3),
-  table td:nth-child(3) {
-    display: none;
+  
+  .sensor-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
   }
- 
+  
+  .sensor-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: 750px;
+    transition: transform 0.2s ease;
+  }
+  
+  .sensor-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .sensor-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  
+  /* 개별 정보 영역 (작은 회색 박스 느낌) */
+  .sensor-item {
+    background: #f0f0f0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  
+  .sensor-name {
+    font-weight: bold;
+    min-width: 120px;
+  }
+  
+  .sensor-status span {
+    margin-right: 6px;
+  }
+  
+  .circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #555;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+  }
+  
+  .sensor-address input {
+    width: 120px;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .sensor-address button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 6px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+  
+  .sensor-address button:hover {
+    background-color: #45a049;
+  }
+  
+  .sensor-sound input[type="range"] {
+    width: 100px;
+  }
+  
+  .sensor-sound label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .sensor-card.warning {
+    background-color: #ffe5e5;
+    animation: blink 1s infinite;
+  }
+  
+  @keyframes blink {
+    0%   { background-color: #ffe5e5; }
+    50%  { background-color: #ffcccc; }
+    100% { background-color: #ffe5e5; }
+  }
+  
