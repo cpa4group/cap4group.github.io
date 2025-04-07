@@ -1,19 +1,30 @@
 <!DOCTYPE html>
+<button onclick="new Audio('sounds/alert.mp3').play()">🔊 테스트 사운드</button>
+
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>ESP32 센서 대시부드</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>ESP32 센서 대시보드</title>
+  <link rel="stylesheet" href="2025.4.7.css" />
 </head>
 <body>
   <h1>📡 ESP32 센서 상태 모니터링</h1>
 
-  <!-- 센서 카드 표시 -->
-  <div class="sensor-container" id="sensorContainer"></div>
+  <!-- ✅ 오디오 활성화 버튼 -->
+  <div style="text-align: center; margin-bottom: 20px;">
+    <button id="enableAudioBtn">🔊 웹 알림 소리 활성화</button>
+  </div>
 
-  <!-- 소리 플레이어: 센서별 -->
+  <h2>🚨 긴급 센서</h2>
+  <div id="mainContainer" class="sensor-main"></div>
+
+  <h2>📋 전체 센서</h2>
+  <button id="toggleButton">더보기 열기</button>
+  <div id="sensorContainer" class="sensor-container hidden"></div>
+
+  <!-- 오디오 템플릿 -->
   <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display: none"></audio>
 
-  <script type="module" src="firebase.js"></script>
+  <script type="module" src="2025.4.7.js"></script>
 </body>
 </html>
