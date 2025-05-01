@@ -1,9 +1,8 @@
+// Firebase 초기화
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
-import { update } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
 
 
-// Firebase 설정
 const firebaseConfig = {
  apiKey: "AIzaSyAH18MqEDo-SoZFruYnf1kCB_r43AJScH8",
  authDomain: "kmucapstone4group-2c0d3.firebaseapp.com",
@@ -23,13 +22,20 @@ const sensorRef = ref(db, "/sensors");
 const mainContainer = document.getElementById("mainContainer");
 const container = document.getElementById("sensorContainer");
 const filteredContainer = document.getElementById("filteredContainer");
+const userListContainer = document.getElementById("userList");
 const toggleButton = document.getElementById("toggleButton");
 const enableAudioBtn = document.getElementById("enableAudioBtn");
+const sidebarSido = document.getElementById("sidebarSido");
+const sidebarSigungu = document.getElementById("sidebarSigungu");
+const sidebarDong = document.getElementById("sidebarDong");
+const searchButton = document.getElementById("searchButton");
 
 
 let audioUnlocked = false;
 let allSensorData = {};
 let previousValues = {};
+let locationData = [];
+let selectedUsers = {};
 
 
 enableAudioBtn.addEventListener("click", () => {
@@ -37,9 +43,7 @@ enableAudioBtn.addEventListener("click", () => {
  sound.play().then(() => {
    audioUnlocked = true;
    enableAudioBtn.style.display = "none";
- }).catch((e) => {
-   console.warn("❌ 오디오 실패:", e);
- });
+ }).catch((e) => console.warn("❌ 오디오 실패:", e));
 });
 
 
@@ -50,9 +54,14 @@ toggleButton.addEventListener("click", () => {
 
 
 onValue(sensorRef, (snapshot) => {
- const sensors = snapshot.val() || {};
- allSensorData = sensors;
- renderMainSensors(); // 전체 센서 보여줌
+ allSensorData = snapshot.val() || {};
+ for (let id in allSensorData) {
+   const sensor = allSensorData[id];
+   if (sensor.address) {
+     localStorage.setItem(`sensor_addr_${id}`, sensor.address);
+   }
+ }
+ renderMainSensors();
 });
 
 
@@ -61,20 +70,8 @@ function renderMainSensors() {
  container.innerHTML = "";
  for (let id in allSensorData) {
    const sensor = allSensorData[id];
-   const target = sensor.value === 2 ? mainContainer : container;
+   const target = (sensor.value === 2) ? mainContainer : container;
    renderSensorCard(id, sensor, target);
- }
-}
-
-
-function renderFilteredSensors(sido, sigungu, dong) {
- filteredContainer.innerHTML = "";
- for (let id in allSensorData) {
-   const sensor = allSensorData[id];
-   const address = localStorage.getItem(`sensor_addr_${id}`) || sensor.address || "";
-   if (address.includes(`${sido} ${sigungu} ${dong}`)) {
-     renderSensorCard(id, sensor, filteredContainer);
-   }
  }
 }
 
@@ -90,122 +87,46 @@ function renderSensorCard(id, sensor, targetContainer) {
  if (currentValue === 2) card.classList.add("warning");
 
 
- const rowDiv = document.createElement("div");
- rowDiv.className = "sensor-row";
+ const topRow = document.createElement("div");
+ topRow.className = "sensor-row";
 
 
  const nameBox = document.createElement("div");
  nameBox.className = "sensor-item sensor-name";
- nameBox.textContent = `이름: ${sensor.name || id}`;
+ nameBox.innerHTML = `<strong>이름:</strong> ${sensor.name || id}`;
 
 
- const statusBox = document.createElement("div");
- statusBox.className = "sensor-item sensor-status";
- const statusLabel = document.createElement("span");
- statusLabel.textContent = "상태:";
- const circle = document.createElement("div");
- circle.className = "circle";
- circle.style.backgroundColor = ["green", "orange", "red"][currentValue] || "gray";
- statusBox.appendChild(statusLabel);
- statusBox.appendChild(circle);
+ const statusDot = document.createElement("div");
+ statusDot.className = "sensor-status";
+ statusDot.style.backgroundColor = ["green", "orange", "red"][currentValue] || "gray";
 
 
  const addrBox = document.createElement("div");
  addrBox.className = "sensor-item sensor-address";
- const addrLabel = document.createElement("span");
- addrLabel.textContent = "주소:";
- const addrInput = document.createElement("input");
- addrInput.type = "text";
- addrInput.value = localStorage.getItem(`sensor_addr_${id}`) || sensor.address || "";
+ addrBox.innerHTML = `<strong>주소:</strong> ${sensor.address || "주소 없음"}`;
 
 
- const addrBtn = document.createElement("button");
- addrBtn.textContent = "저장";
- addrBtn.onclick = () => {
-   localStorage.setItem(`sensor_addr_${id}`, addrInput.value);
-   alert("✅ 주소 저장 완료!");
- };
+ const phoneBox = document.createElement("div");
+ phoneBox.className = "sensor-item sensor-phone";
+ phoneBox.innerHTML = `<strong>전화번호:</strong> ${sensor.phone || "번호 없음"}`;
 
 
- // 주소 셀렉트 박스
- const sidoSelect = document.createElement("select");
- const sigunguSelect = document.createElement("select");
- const dongSelect = document.createElement("select");
+ topRow.append(nameBox, statusDot, addrBox, phoneBox);
 
 
- fetch("lo_fixed.json")
-   .then(res => res.json())
-   .then(data => {
-     const sidoList = [...new Set(data.map(d => d.sido))];
-     sidoList.forEach(s => {
-       const o = document.createElement("option");
-       o.value = o.textContent = s;
-       sidoSelect.appendChild(o);
-     });
-
-
-     sidoSelect.addEventListener("change", () => {
-       sigunguSelect.innerHTML = "";
-       dongSelect.innerHTML = "";
-       [...new Set(data.filter(d => d.sido === sidoSelect.value).map(d => d.sigungu))]
-         .forEach(gu => {
-           const o = document.createElement("option");
-           o.value = o.textContent = gu;
-           sigunguSelect.appendChild(o);
-         });
-       sigunguSelect.dispatchEvent(new Event("change"));
-     });
-
-
-     sigunguSelect.addEventListener("change", () => {
-       dongSelect.innerHTML = "";
-       data.filter(d => d.sido === sidoSelect.value && d.sigungu === sigunguSelect.value)
-           .map(d => d.dong)
-           .forEach(dong => {
-             const o = document.createElement("option");
-             o.value = o.textContent = dong;
-             dongSelect.appendChild(o);
-           });
-     });
-
-
-     dongSelect.addEventListener("change", () => {
-       addrInput.value = `${sidoSelect.value} ${sigunguSelect.value} ${dongSelect.value}`;
-     });
-
-
-     const parts = addrInput.value.split(" ");
-     if (parts.length === 3) {
-       sidoSelect.value = parts[0];
-       sidoSelect.dispatchEvent(new Event("change"));
-       setTimeout(() => {
-         sigunguSelect.value = parts[1];
-         sigunguSelect.dispatchEvent(new Event("change"));
-         setTimeout(() => {
-           dongSelect.value = parts[2];
-           dongSelect.dispatchEvent(new Event("change"));
-         }, 100);
-       }, 100);
-     } else {
-       sidoSelect.dispatchEvent(new Event("change"));
-     }
-   });
-
-
- addrBox.append(addrLabel, addrInput, addrBtn, sidoSelect, sigunguSelect, dongSelect);
+ const soundRow = document.createElement("div");
+ soundRow.className = "sensor-row";
 
 
  const soundBox = document.createElement("div");
  soundBox.className = "sensor-item sensor-sound";
- const soundLabel = document.createElement("label");
- soundLabel.textContent = "소리 사용 🔊";
+
+
  const soundToggle = document.createElement("input");
  soundToggle.type = "checkbox";
  soundToggle.checked = true;
 
 
- const volumeLabel = document.createElement("label");
- volumeLabel.textContent = "음량 조절 🔉";
  const volumeSlider = document.createElement("input");
  volumeSlider.type = "range";
  volumeSlider.min = 0;
@@ -214,46 +135,146 @@ function renderSensorCard(id, sensor, targetContainer) {
  volumeSlider.value = 1;
 
 
+ soundBox.append(
+   document.createTextNode("소리사용 "),
+   soundToggle,
+   document.createTextNode(" 음량 "),
+   volumeSlider
+ );
+
+
+ soundRow.appendChild(soundBox);
+
+
  if (currentValue === 2 && prev !== 2 && soundToggle.checked && audioUnlocked) {
    const sound = new Audio("sounds/alert.mp3");
    sound.volume = volumeSlider.value;
-   sound.play().catch(e => console.warn("🔇 센서 알림 실패:", e));
+   sound.play().catch(e => console.warn("🔇 알림 실패:", e));
  }
 
 
- soundBox.append(soundLabel, soundToggle, volumeLabel, volumeSlider);
+ const regionRow = document.createElement("div");
+ regionRow.className = "sensor-row";
 
 
- if (currentValue === 2) {
-   const resetBtn = document.createElement("button");
-   resetBtn.textContent = "경고 해제";
-   resetBtn.onclick = () => {
-     update(ref(db, `/sensors/${id}`), { command: "reset" })
-       .then(() => console.log("🛠️ 리셋 전송 완료"))
-       .catch((err) => console.error("❌ 실패:", err));
-   };
-   card.appendChild(resetBtn);
+ const sidoSelect = document.createElement("select");
+ const sigunguSelect = document.createElement("select");
+ const dongSelect = document.createElement("select");
+ const saveBtn = document.createElement("button");
+ saveBtn.textContent = "저장";
+
+
+ const matchedData = locationData || [];
+ const sidoList = [...new Set(matchedData.map(d => d.sido))];
+ sidoList.forEach(s => {
+   const o = document.createElement("option");
+   o.value = o.textContent = s;
+   sidoSelect.appendChild(o);
+ });
+
+
+ sidoSelect.addEventListener("change", () => {
+   sigunguSelect.innerHTML = "";
+   dongSelect.innerHTML = "";
+   [...new Set(matchedData.filter(d => d.sido === sidoSelect.value).map(d => d.sigungu))].forEach(gu => {
+     const o = document.createElement("option");
+     o.value = o.textContent = gu;
+     sigunguSelect.appendChild(o);
+   });
+   sigunguSelect.dispatchEvent(new Event("change"));
+ });
+
+
+ sigunguSelect.addEventListener("change", () => {
+   dongSelect.innerHTML = "";
+   matchedData.filter(d => d.sido === sidoSelect.value && d.sigungu === sigunguSelect.value)
+     .map(d => d.dong).forEach(d => {
+       const o = document.createElement("option");
+       o.value = o.textContent = d;
+       dongSelect.appendChild(o);
+     });
+ });
+
+
+ sidoSelect.dispatchEvent(new Event("change"));
+
+
+ // 👉 주소 있으면 자동 선택해주기
+ const storedAddr = localStorage.getItem(`sensor_addr_${id}`);
+ if (storedAddr) {
+   const [sido, sigungu, dong] = storedAddr.split(" ");
+   sidoSelect.value = sido;
+   sidoSelect.dispatchEvent(new Event("change"));
+   setTimeout(() => {
+     sigunguSelect.value = sigungu;
+     sigunguSelect.dispatchEvent(new Event("change"));
+     setTimeout(() => {
+       dongSelect.value = dong;
+     }, 100);
+   }, 100);
  }
 
 
- rowDiv.append(nameBox, statusBox, addrBox, soundBox);
- card.appendChild(rowDiv);
+ saveBtn.onclick = () => {
+   const fullAddr = `${sidoSelect.value} ${sigunguSelect.value} ${dongSelect.value}`;
+   localStorage.setItem(`sensor_addr_${id}`, fullAddr);
+   alert(`✅ 지역 필터용 주소 저장됨: ${fullAddr}`);
+ };
+
+
+ regionRow.append(
+   document.createTextNode("지역필터 "),
+   sidoSelect,
+   sigunguSelect,
+   dongSelect,
+   saveBtn
+ );
+
+
+ const buttonBox = document.createElement("div");
+ buttonBox.style.display = "flex";
+ buttonBox.style.gap = "10px";
+
+
+ const alertBtn = document.createElement("button");
+ alertBtn.textContent = "알림";
+ alertBtn.onclick = () => alert(`센서 ${sensor.name || id} 알림 발생!`);
+
+
+ const resetBtn = document.createElement("button");
+ resetBtn.textContent = "센서리셋";
+ resetBtn.onclick = () => {
+   update(ref(db, `/sensors/${id}`), { command: "reset" })
+     .then(() => alert(`🛠️ ${sensor.name || id} 센서 리셋 완료`))
+     .catch(err => console.error("❌ 리셋 실패:", err));
+ };
+
+
+ buttonBox.append(alertBtn, resetBtn);
+
+
+ card.append(topRow, soundRow, regionRow, buttonBox);
  targetContainer.appendChild(card);
 }
 
 
-// ✅ 사이드바 필터 기능
-const sidebarSido = document.getElementById("sidebarSido");
-const sidebarSigungu = document.getElementById("sidebarSigungu");
-const sidebarDong = document.getElementById("sidebarDong");
+function renderSelectedUsers() {
+ filteredContainer.innerHTML = "";
+ for (let id in selectedUsers) {
+   renderSensorCard(id, selectedUsers[id], filteredContainer);
+ }
+}
 
 
 fetch("lo_fixed.json")
  .then(res => res.json())
  .then(data => {
-   [...new Set(data.map(d => d.sido))].forEach(sido => {
+   locationData = data;
+   const sidoList = [...new Set(data.map(d => d.sido))];
+   sidoList.forEach(sido => {
      const op = document.createElement("option");
-     op.value = op.textContent = sido;
+     op.value = sido;
+     op.textContent = sido;
      sidebarSido.appendChild(op);
    });
 
@@ -261,38 +282,75 @@ fetch("lo_fixed.json")
    sidebarSido.addEventListener("change", () => {
      sidebarSigungu.innerHTML = "";
      sidebarDong.innerHTML = "";
-     [...new Set(data.filter(d => d.sido === sidebarSido.value).map(d => d.sigungu))]
-       .forEach(gu => {
-         const op = document.createElement("option");
-         op.value = op.textContent = gu;
-         sidebarSigungu.appendChild(op);
-       });
+     [...new Set(data.filter(d => d.sido === sidebarSido.value).map(d => d.sigungu))].forEach(gu => {
+       const op = document.createElement("option");
+       op.value = gu;
+       op.textContent = gu;
+       sidebarSigungu.appendChild(op);
+     });
      sidebarSigungu.dispatchEvent(new Event("change"));
    });
 
 
    sidebarSigungu.addEventListener("change", () => {
      sidebarDong.innerHTML = "";
-     [...new Set(data.filter(d =>
-       d.sido === sidebarSido.value && d.sigungu === sidebarSigungu.value
-     ).map(d => d.dong))].forEach(dong => {
+     [...new Set(data.filter(d => d.sido === sidebarSido.value && d.sigungu === sidebarSigungu.value).map(d => d.dong))].forEach(dong => {
        const op = document.createElement("option");
-       op.value = op.textContent = dong;
+       op.value = dong;
+       op.textContent = dong;
        sidebarDong.appendChild(op);
      });
    });
 
 
-   sidebarDong.addEventListener("change", () => {
-     renderFilteredSensors(
-       sidebarSido.value,
-       sidebarSigungu.value,
-       sidebarDong.value
-     );
-   });
-
-
-   sidebarSido.dispatchEvent(new Event("change")); // 초기 실행
+   sidebarSido.dispatchEvent(new Event("change"));
  });
 
 
+searchButton.addEventListener("click", () => {
+ userListContainer.innerHTML = "";
+ filteredContainer.innerHTML = "";
+ selectedUsers = {};
+
+
+ const sido = sidebarSido.value;
+ const sigungu = sidebarSigungu.value;
+ const dong = sidebarDong.value;
+ const fullAddr = `${sido} ${sigungu} ${dong}`;
+
+
+ for (let id in allSensorData) {
+   const sensor = allSensorData[id];
+   const stored = localStorage.getItem(`sensor_addr_${id}`) || sensor.address;
+
+
+   if (!stored || stored.includes(fullAddr)) {
+     const userDiv = document.createElement("div");
+     userDiv.className = "user-item";
+
+
+     const checkbox = document.createElement("input");
+     checkbox.type = "checkbox";
+     checkbox.style.marginRight = "8px";
+
+
+     const label = document.createElement("span");
+     label.textContent = `${sensor.name || id} (${sensor.phone || "번호 없음"}) - ${sensor.address || "주소 없음"}`;
+
+
+     checkbox.addEventListener("change", (e) => {
+       if (e.target.checked) {
+         selectedUsers[id] = sensor;
+       } else {
+         delete selectedUsers[id];
+       }
+       renderSelectedUsers();
+     });
+
+
+     userDiv.appendChild(checkbox);
+     userDiv.appendChild(label);
+     userListContainer.appendChild(userDiv);
+   }
+ }
+});
