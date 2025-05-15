@@ -1,356 +1,330 @@
 // Firebase 초기화
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
-
+import {
+  getDatabase,
+  ref,
+  get,
+  onChildAdded,
+  onChildChanged,
+  runTransaction,
+  update
+} from "https://www.gstatic.com/firebasejs/11.5.0/firebase-database.js";
 
 const firebaseConfig = {
- apiKey: "AIzaSyAH18MqEDo-SoZFruYnf1kCB_r43AJScH8",
- authDomain: "kmucapstone4group-2c0d3.firebaseapp.com",
- databaseURL: "https://kmucapstone4group-2c0d3-default-rtdb.firebaseio.com",
- projectId: "kmucapstone4group-2c0d3",
- storageBucket: "kmucapstone4group-2c0d3.appspot.com",
- messagingSenderId: "906625063859",
- appId: "1:906625063859:web:0f7f509f9b28bceb4989c6"
+  apiKey: "AIzaSyAH18MqEDo-SoZFruYnf1kCB_r43AJScH8",
+  authDomain: "kmucapstone4group-2c0d3.firebaseapp.com",
+  databaseURL: "https://kmucapstone4group-2c0d3-default-rtdb.firebaseio.com",
+  projectId: "kmucapstone4group-2c0d3",
+  storageBucket: "kmucapstone4group-2c0d3.appspot.com",
+  messagingSenderId: "906625063859",
+  appId: "1:906625063859:web:0f7f509f9b28bceb4989c6"
 };
 
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const app       = initializeApp(firebaseConfig);
+const db        = getDatabase(app);
 const sensorRef = ref(db, "/sensors");
 
+// Debounce/Cooldown 설정 (밀리초)
+const DEBOUNCE_TIME = 200;
+const COOLDOWN_TIME = 1000;
 
-const mainContainer = document.getElementById("mainContainer");
-const container = document.getElementById("sensorContainer");
+// Wake window 검사: 사용자 기상 시간 ±2시간 내에 밟힘 감지 없으면 상태값 2로 설정
+function checkWakeWindow(id, sensor) {
+  if (!sensor.time) return;
+  const wakeTime = new Date(sensor.time);
+  const now = new Date();
+  const windowStart = new Date(wakeTime.getTime() - 2 * 60 * 60 * 1000);
+  const windowEnd = new Date(wakeTime.getTime() + 2 * 60 * 60 * 1000);
+
+  // 윈도우 종료 후 한 번도 밟히지 않았으면 경고 상태로 업데이트
+  if (now > windowEnd) {
+    const hitsToday = Number(sensor.number ?? sensor.value);
+    if (hitsToday === 0 && sensor.value !== 2) {
+      update(ref(db, `/sensors/${id}`), { value: 2 })
+        .catch(e => console.error(`Wake window 체크 업데이트 실패: ${id}`, e));
+    }
+  }
+}
+
+// 오늘 히트카운트 기록 (필요시 유지)
+function recordDailyHit(sensorId) {
+  const today  = new Date().toISOString().slice(0,10);
+  const hitRef = ref(db, `/sensors/${sensorId}/hits/${today}`);
+  runTransaction(hitRef, count => (count||0) + 1)
+    .catch(e => console.error(`Hit 실패: ${sensorId}`, e));
+}
+
+// 센서 카드 생성 (최초 렌더)
+function createSensorCard(id, sensor) {
+  const currVal = Number(sensor.number ?? sensor.value);
+
+  const card = document.createElement("div");
+  card.className = "sensor-card";
+  card.id = `sensor-${id}`;
+  if (currVal === 2) card.classList.add("warning");
+
+  // ── 상단 정보 행
+  const topRow = document.createElement("div");
+  topRow.className = "sensor-row";
+
+  const nameBox = document.createElement("div");
+  nameBox.className = "sensor-item sensor-name";
+  nameBox.textContent = `이름: ${sensor.name || id}`;
+
+  const statusDot = document.createElement("div");
+  statusDot.className = "sensor-status";
+  statusDot.style.backgroundColor =
+    ["green","orange","red"][Number(sensor.value)] || "gray";
+
+  const addrBox = document.createElement("div");
+  addrBox.className = "sensor-item sensor-address";
+  addrBox.textContent = `주소: ${sensor.address || "-"}`;
+
+  const phoneBox = document.createElement("div");
+  phoneBox.className = "sensor-item sensor-phone";
+  phoneBox.textContent = `전화번호: ${sensor.phone || "-"}`;
+
+  const numberBox = document.createElement("div");
+  numberBox.className = "sensor-item sensor-number";
+  numberBox.textContent = `오늘 눌린 횟수: ${currVal}`;
+
+  const deviceTimeBox = document.createElement("div");
+  deviceTimeBox.className = "sensor-item sensor-devicetime";
+  deviceTimeBox.textContent = `사용자 기상 시간: ${sensor.time || "-"}`;
+
+  topRow.append(
+    nameBox,
+    statusDot,
+    addrBox,
+    phoneBox,
+    numberBox,
+    deviceTimeBox
+  );
+
+  // ── 알림 / 리셋 버튼 행
+  const buttonBox = document.createElement("div");
+  buttonBox.style.display = "flex";
+  buttonBox.style.gap = "8px";
+
+  const alertBtn = document.createElement("button");
+  alertBtn.textContent = "알림";
+  alertBtn.onclick = () => alert(`${sensor.name || id} 알림!`);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.textContent = "리셋";
+  resetBtn.onclick = () =>
+    update(ref(db, `/sensors/${id}`), { command: "reset", value: 0 });
+
+  buttonBox.append(alertBtn, resetBtn);
+
+  card.append(topRow, buttonBox);
+  return card;
+}
+
+// 센서 카드 업데이트 (변경된 카드만)
+function updateSensorCard(id, sensor) {
+  const card    = document.getElementById(`sensor-${id}`);
+  const currVal = Number(sensor.number ?? sensor.value);
+  previousValues[id] = currVal;
+
+  if (!card) {
+    // 새 센서인 경우 prepend
+    const newCard = createSensorCard(id, sensor);
+    if (currVal === 2) mainContainer.prepend(newCard);
+    else               container.prepend(newCard);
+    return;
+  }
+
+  // 상태 점 색상 갱신
+  const statusDot = card.querySelector(".sensor-status");
+  statusDot.style.backgroundColor =
+    ["green","orange","red"][Number(sensor.value)] || "gray";
+
+  // 값 갱신
+  const numberBox = card.querySelector(".sensor-item.sensor-number");
+  numberBox.textContent = `오늘 눌린 횟수: ${currVal}`;
+
+  // 장치시간 갱신
+  const deviceTimeBox = card.querySelector(".sensor-item.sensor-devicetime");
+  deviceTimeBox.textContent = `사용자 기상 시간: ${sensor.time || "-"}`;
+
+  // 긴급센서일 때 맨 위로 이동
+  const curParent = card.parentElement;
+  const newParent = currVal === 2 ? mainContainer : container;
+  if (curParent !== newParent) newParent.prepend(card);
+}
+
+// 초기 렌더링 (한 번만)
+function renderMainSensors() {
+  mainContainer.innerHTML = "";
+  container.innerHTML     = "";
+  previousValues = {};
+
+  const fragNormal  = document.createDocumentFragment();
+  const fragWarning = document.createDocumentFragment();
+
+  Object.entries(allSensorData).forEach(([id, sensor]) => {
+    const currVal = Number(sensor.number ?? sensor.value);
+    previousValues[id] = currVal;
+    const card = createSensorCard(id, sensor);
+    if (currVal === 2) fragWarning.appendChild(card);
+    else               fragNormal.appendChild(card);
+  });
+
+  mainContainer.appendChild(fragWarning);
+  container.appendChild(fragNormal);
+}
+
+// DOM 요소
+const mainContainer     = document.getElementById("mainContainer");     // 긴급센서(value=2)
+const container         = document.getElementById("sensorContainer");   // 일반센서
 const filteredContainer = document.getElementById("filteredContainer");
 const userListContainer = document.getElementById("userList");
-const toggleButton = document.getElementById("toggleButton");
-const enableAudioBtn = document.getElementById("enableAudioBtn");
-const sidebarSido = document.getElementById("sidebarSido");
-const sidebarSigungu = document.getElementById("sidebarSigungu");
-const sidebarDong = document.getElementById("sidebarDong");
-const searchButton = document.getElementById("searchButton");
+const toggleButton      = document.getElementById("toggleButton");
+const sidebarSido       = document.getElementById("sidebarSido");
+const sidebarSigungu    = document.getElementById("sidebarSigungu");
+const sidebarDong       = document.getElementById("sidebarDong");
+const searchButton      = document.getElementById("searchButton");
 
+let allSensorData        = {};
+let previousValues       = {};
+let triggered            = {};
+let triggerTimestamps    = {};
+let lastRecordTimestamps = {};
+let locationData         = [];
+let selectedUsers        = {};
 
-let audioUnlocked = false;
-let allSensorData = {};
-let previousValues = {};
-let locationData = [];
-let selectedUsers = {};
-
-
-enableAudioBtn.addEventListener("click", () => {
- const sound = new Audio("sounds/alert.mp3");
- sound.play().then(() => {
-   audioUnlocked = true;
-   enableAudioBtn.style.display = "none";
- }).catch((e) => console.warn("❌ 오디오 실패:", e));
-});
-
-
+// 카드 토글
 toggleButton.addEventListener("click", () => {
- container.classList.toggle("hidden");
- toggleButton.textContent = container.classList.contains("hidden") ? "더보기 열기" : "더보기 닫기";
+  container.classList.toggle("hidden");
+  toggleButton.textContent = container.classList.contains("hidden")
+    ? "더보기 열기" : "더보기 닫기";
 });
 
+// 1) 초기 데이터 로드
+get(sensorRef)
+  .then(snapshot => {
+    allSensorData = snapshot.val() || {};
+    renderMainSensors();
+    // Wake window 체크 호출
+    Object.entries(allSensorData).forEach(([id, sensor]) => {
+      checkWakeWindow(id, sensor);
+    });
+  })
+  .catch(e => console.error("초기 데이터 로드 실패:", e));
 
-onValue(sensorRef, (snapshot) => {
- allSensorData = snapshot.val() || {};
- for (let id in allSensorData) {
-   const sensor = allSensorData[id];
-   if (sensor.address) {
-     localStorage.setItem(`sensor_addr_${id}`, sensor.address);
-   }
- }
- renderMainSensors();
+// 2) 센서 추가 감지
+onChildAdded(sensorRef, snapshot => {
+  const id     = snapshot.key;
+  const sensor = snapshot.val();
+  allSensorData[id] = sensor;
+  const currVal = Number(sensor.number ?? sensor.value);
+  const newCard = createSensorCard(id, sensor);
+  if (currVal === 2) mainContainer.prepend(newCard);
+  else               container.prepend(newCard);
+  // Wake window 체크 호출
+  checkWakeWindow(id, sensor);
 });
 
+// 3) 값 변경 감지
+onChildChanged(sensorRef, snapshot => {
+  const id     = snapshot.key;
+  const sensor = snapshot.val();
+  const curr   = Number(sensor.number ?? sensor.value);
+  const prev   = Number(previousValues[id] ?? 0);
 
-function renderMainSensors() {
- mainContainer.innerHTML = "";
- container.innerHTML = "";
- for (let id in allSensorData) {
-   const sensor = allSensorData[id];
-   const target = (sensor.value === 2) ? mainContainer : container;
-   renderSensorCard(id, sensor, target);
- }
-}
+  allSensorData[id] = sensor;
+  if (curr === prev) return;
 
+  const now = Date.now();
+  if (prev === 0 && curr === 1) {
+    triggered[id] = true;
+    triggerTimestamps[id] = now;
+  } else if (prev === 1 && curr === 0 && triggered[id]) {
+    const sinceTrig = now - triggerTimestamps[id];
+    const sinceRec  = now - lastRecordTimestamps[id];
+    if (sinceTrig > DEBOUNCE_TIME && sinceRec > COOLDOWN_TIME) {
+      recordDailyHit(id);
+      lastRecordTimestamps[id] = now;
+    }
+    triggered[id] = false;
+  }
 
-function renderSensorCard(id, sensor, targetContainer) {
- const currentValue = sensor.value;
- const prev = previousValues[id];
- previousValues[id] = currentValue;
+  updateSensorCard(id, sensor);
+  // Wake window 체크 호출
+  checkWakeWindow(id, sensor);
+});
 
-
- const card = document.createElement("div");
- card.className = "sensor-card";
- if (currentValue === 2) card.classList.add("warning");
-
-
- const topRow = document.createElement("div");
- topRow.className = "sensor-row";
-
-
- const nameBox = document.createElement("div");
- nameBox.className = "sensor-item sensor-name";
- nameBox.innerHTML = `<strong>이름:</strong> ${sensor.name || id}`;
-
-
- const statusDot = document.createElement("div");
- statusDot.className = "sensor-status";
- statusDot.style.backgroundColor = ["green", "orange", "red"][currentValue] || "gray";
-
-
- const addrBox = document.createElement("div");
- addrBox.className = "sensor-item sensor-address";
- addrBox.innerHTML = `<strong>주소:</strong> ${sensor.address || "주소 없음"}`;
-
-
- const phoneBox = document.createElement("div");
- phoneBox.className = "sensor-item sensor-phone";
- phoneBox.innerHTML = `<strong>전화번호:</strong> ${sensor.phone || "번호 없음"}`;
-
-
- topRow.append(nameBox, statusDot, addrBox, phoneBox);
-
-
- const soundRow = document.createElement("div");
- soundRow.className = "sensor-row";
-
-
- const soundBox = document.createElement("div");
- soundBox.className = "sensor-item sensor-sound";
-
-
- const soundToggle = document.createElement("input");
- soundToggle.type = "checkbox";
- soundToggle.checked = true;
-
-
- const volumeSlider = document.createElement("input");
- volumeSlider.type = "range";
- volumeSlider.min = 0;
- volumeSlider.max = 1;
- volumeSlider.step = 0.01;
- volumeSlider.value = 1;
-
-
- soundBox.append(
-   document.createTextNode("소리사용 "),
-   soundToggle,
-   document.createTextNode(" 음량 "),
-   volumeSlider
- );
-
-
- soundRow.appendChild(soundBox);
-
-
- if (currentValue === 2 && prev !== 2 && soundToggle.checked && audioUnlocked) {
-   const sound = new Audio("sounds/alert.mp3");
-   sound.volume = volumeSlider.value;
-   sound.play().catch(e => console.warn("🔇 알림 실패:", e));
- }
-
-
- const regionRow = document.createElement("div");
- regionRow.className = "sensor-row";
-
-
- const sidoSelect = document.createElement("select");
- const sigunguSelect = document.createElement("select");
- const dongSelect = document.createElement("select");
- const saveBtn = document.createElement("button");
- saveBtn.textContent = "저장";
-
-
- const matchedData = locationData || [];
- const sidoList = [...new Set(matchedData.map(d => d.sido))];
- sidoList.forEach(s => {
-   const o = document.createElement("option");
-   o.value = o.textContent = s;
-   sidoSelect.appendChild(o);
- });
-
-
- sidoSelect.addEventListener("change", () => {
-   sigunguSelect.innerHTML = "";
-   dongSelect.innerHTML = "";
-   [...new Set(matchedData.filter(d => d.sido === sidoSelect.value).map(d => d.sigungu))].forEach(gu => {
-     const o = document.createElement("option");
-     o.value = o.textContent = gu;
-     sigunguSelect.appendChild(o);
-   });
-   sigunguSelect.dispatchEvent(new Event("change"));
- });
-
-
- sigunguSelect.addEventListener("change", () => {
-   dongSelect.innerHTML = "";
-   matchedData.filter(d => d.sido === sidoSelect.value && d.sigungu === sigunguSelect.value)
-     .map(d => d.dong).forEach(d => {
-       const o = document.createElement("option");
-       o.value = o.textContent = d;
-       dongSelect.appendChild(o);
-     });
- });
-
-
- sidoSelect.dispatchEvent(new Event("change"));
-
-
- // 👉 주소 있으면 자동 선택해주기
- const storedAddr = localStorage.getItem(`sensor_addr_${id}`);
- if (storedAddr) {
-   const [sido, sigungu, dong] = storedAddr.split(" ");
-   sidoSelect.value = sido;
-   sidoSelect.dispatchEvent(new Event("change"));
-   setTimeout(() => {
-     sigunguSelect.value = sigungu;
-     sigunguSelect.dispatchEvent(new Event("change"));
-     setTimeout(() => {
-       dongSelect.value = dong;
-     }, 100);
-   }, 100);
- }
-
-
- saveBtn.onclick = () => {
-   const fullAddr = `${sidoSelect.value} ${sigunguSelect.value} ${dongSelect.value}`;
-   localStorage.setItem(`sensor_addr_${id}`, fullAddr);
-   alert(`✅ 지역 필터용 주소 저장됨: ${fullAddr}`);
- };
-
-
- regionRow.append(
-   document.createTextNode("지역필터 "),
-   sidoSelect,
-   sigunguSelect,
-   dongSelect,
-   saveBtn
- );
-
-
- const buttonBox = document.createElement("div");
- buttonBox.style.display = "flex";
- buttonBox.style.gap = "10px";
-
-
- const alertBtn = document.createElement("button");
- alertBtn.textContent = "알림";
- alertBtn.onclick = () => alert(`센서 ${sensor.name || id} 알림 발생!`);
-
-
- const resetBtn = document.createElement("button");
- resetBtn.textContent = "센서리셋";
- resetBtn.onclick = () => {
-   update(ref(db, `/sensors/${id}`), { command: "reset" })
-     .then(() => alert(`🛠️ ${sensor.name || id} 센서 리셋 완료`))
-     .catch(err => console.error("❌ 리셋 실패:", err));
- };
-
-
- buttonBox.append(alertBtn, resetBtn);
-
-
- card.append(topRow, soundRow, regionRow, buttonBox);
- targetContainer.appendChild(card);
-}
-
-
-function renderSelectedUsers() {
- filteredContainer.innerHTML = "";
- for (let id in selectedUsers) {
-   renderSensorCard(id, selectedUsers[id], filteredContainer);
- }
-}
-
-
+// 지역 데이터 로딩 및 전역 필터 설정
 fetch("lo_fixed.json")
- .then(res => res.json())
- .then(data => {
-   locationData = data;
-   const sidoList = [...new Set(data.map(d => d.sido))];
-   sidoList.forEach(sido => {
-     const op = document.createElement("option");
-     op.value = sido;
-     op.textContent = sido;
-     sidebarSido.appendChild(op);
-   });
+  .then(res => res.json())
+  .then(data => {
+    locationData = data;
 
+    [...new Set(data.map(d => d.sido))].forEach(s => {
+      const o = document.createElement("option");
+      o.value = o.textContent = s;
+      sidebarSido.append(o);
+    });
 
-   sidebarSido.addEventListener("change", () => {
-     sidebarSigungu.innerHTML = "";
-     sidebarDong.innerHTML = "";
-     [...new Set(data.filter(d => d.sido === sidebarSido.value).map(d => d.sigungu))].forEach(gu => {
-       const op = document.createElement("option");
-       op.value = gu;
-       op.textContent = gu;
-       sidebarSigungu.appendChild(op);
-     });
-     sidebarSigungu.dispatchEvent(new Event("change"));
-   });
+    sidebarSido.onchange = () => {
+      sidebarSigungu.innerHTML = sidebarDong.innerHTML = "";
 
+      [...new Set(data
+        .filter(d => d.sido === sidebarSido.value)
+        .map(d => d.sigungu))]
+      .forEach(g => {
+        const o = document.createElement("option");
+        o.value = o.textContent = g;
+        sidebarSigungu.append(o);
+      });
+      sidebarSigungu.dispatchEvent(new Event("change"));
+    };
 
-   sidebarSigungu.addEventListener("change", () => {
-     sidebarDong.innerHTML = "";
-     [...new Set(data.filter(d => d.sido === sidebarSido.value && d.sigungu === sidebarSigungu.value).map(d => d.dong))].forEach(dong => {
-       const op = document.createElement("option");
-       op.value = dong;
-       op.textContent = dong;
-       sidebarDong.appendChild(op);
-     });
-   });
+    sidebarSigungu.onchange = () => {
+      sidebarDong.innerHTML = "";
+      data
+        .filter(d => d.sido === sidebarSido.value && d.sigungu === sidebarSigungu.value)
+        .forEach(item => {
+          const o = document.createElement("option");
+          o.value = o.textContent = item.dong;
+          sidebarDong.append(o);
+        });
+    };
 
+    sidebarSido.dispatchEvent(new Event("change"));
 
-   sidebarSido.dispatchEvent(new Event("change"));
- });
+    searchButton.addEventListener("click", () => {
+      userListContainer.innerHTML = "";
+      filteredContainer.innerHTML = "";
+      selectedUsers = {};
+      const fullFilter = `${sidebarSido.value} ${sidebarSigungu.value} ${sidebarDong.value}`;
+      Object.entries(allSensorData).forEach(([id, sensor]) => {
+        if (!sensor.address || sensor.address.includes(fullFilter)) {
+          const div = document.createElement("div");
+          div.className = "user-item";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          const lbl = document.createElement("span");
+          lbl.textContent = sensor.name || id;
+          cb.onchange = e => {
+            if (e.target.checked) selectedUsers[id] = sensor;
+            else delete selectedUsers[id];
+            renderSelectedUsers();
+          };
+          div.append(cb, lbl);
+          userListContainer.appendChild(div);
+        }
+      });
+    });
+  })
+  .catch(e => console.error("필터 로딩 실패:", e));
 
-
-searchButton.addEventListener("click", () => {
- userListContainer.innerHTML = "";
- filteredContainer.innerHTML = "";
- selectedUsers = {};
-
-
- const sido = sidebarSido.value;
- const sigungu = sidebarSigungu.value;
- const dong = sidebarDong.value;
- const fullAddr = `${sido} ${sigungu} ${dong}`;
-
-
- for (let id in allSensorData) {
-   const sensor = allSensorData[id];
-   const stored = localStorage.getItem(`sensor_addr_${id}`) || sensor.address;
-
-
-   if (!stored || stored.includes(fullAddr)) {
-     const userDiv = document.createElement("div");
-     userDiv.className = "user-item";
-
-
-     const checkbox = document.createElement("input");
-     checkbox.type = "checkbox";
-     checkbox.style.marginRight = "8px";
-
-
-     const label = document.createElement("span");
-     label.textContent = `${sensor.name || id} (${sensor.phone || "번호 없음"}) - ${sensor.address || "주소 없음"}`;
-
-
-     checkbox.addEventListener("change", (e) => {
-       if (e.target.checked) {
-         selectedUsers[id] = sensor;
-       } else {
-         delete selectedUsers[id];
-       }
-       renderSelectedUsers();
-     });
-
-
-     userDiv.appendChild(checkbox);
-     userDiv.appendChild(label);
-     userListContainer.appendChild(userDiv);
-   }
- }
-});
+// 선택된 센서 렌더
+function renderSelectedUsers() {
+  filteredContainer.innerHTML = "";
+  Object.entries(selectedUsers).forEach(([id, sensor]) => {
+    const card = document.getElementById(`sensor-${id}`);
+    if (card) filteredContainer.appendChild(card.cloneNode(true));
+  });
+}
