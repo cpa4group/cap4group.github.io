@@ -4,47 +4,34 @@
   <meta charset="UTF-8" />
   <title>ESP32 센서 대시보드</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- ✅ Chart.js 로드 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <!-- 전체 레이아웃 -->
   <div class="main-layout">
-
     <!-- ✅ 왼쪽 지역 필터 + 사용자 리스트 -->
     <div id="filterSidebar">
       <h3>📍 지역 필터</h3>
-
-      <!-- 지역 선택 필터 -->
       <select id="sidebarSido"></select>
       <select id="sidebarSigungu"></select>
       <select id="sidebarDong"></select>
-
-      <!-- 검색 버튼 -->
       <button id="searchButton">🔍 검색</button>
-
-      <!-- 사용자 리스트 출력 -->
       <h3>👥 사용자 목록</h3>
       <div id="userList"></div>
     </div>
 
-    <!-- ✅ 오른쪽 센서 대시보드 -->
+    <!-- ✅ 센서 대시보드 -->
     <div style="flex: 1;">
       <h1>📡 ESP32 센서 상태 모니터링</h1>
-
-      <!-- 오디오 활성화 버튼 -->
-      <div style="text-align: center; margin-bottom: 20px;">
+      <div id="currentDateTime" style="text-align:center;margin-bottom:20px;font-weight:bold;"></div>
+      <div style="text-align:center;margin-bottom:20px;">
         <button id="enableAudioBtn">🔊 웹 알림 소리 활성화</button>
       </div>
-
-      <!-- 긴급 센서 -->
       <h2>🚨 긴급 센서</h2>
       <div id="mainContainer" class="sensor-main"></div>
-      
-      <!-- 체크된 사용자에 해당하는 센서 -->
       <h2>📌 선택된 지역 센서</h2>
       <div id="filteredContainer" class="sensor-container"></div>
-
-
       <h2>📋 전체 센서</h2>
       <div class="sensor-wrapper">
         <div class="toggle-row">
@@ -52,12 +39,28 @@
         </div>
         <div id="sensorContainer" class="sensor-container hidden"></div>
       </div>
-      
+    </div>
+  </div>
 
-  <!-- 오디오 샘플 -->
-  <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display: none"></audio>
+  <!-- 🔊 알림 사운드 -->
+  <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display:none"></audio>
 
-  <!-- 자바스크립트 연결 -->
+  <!-- ✅ 자바스크립트 모듈 연결 -->
   <script type="module" src="firebase.js"></script>
+
+  <!-- 🕒 현재 시각 표시 -->
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const formatted = now.toLocaleString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+      document.getElementById('currentDateTime').textContent = `현재 시각: ${formatted}`;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+  </script>
 </body>
 </html>
