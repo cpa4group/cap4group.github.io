@@ -3,35 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <title>ESP32 센서 대시보드</title>
-  <link rel="stylesheet" href="styles.css" />
-  <!-- ✅ Chart.js 로드 -->
+  <link rel="stylesheet" href="2025.6.16.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
   <div class="main-layout">
-    <!-- ✅ 왼쪽 지역 필터 + 사용자 리스트 -->
+    <!-- ✅ 왼쪽 지역 필터 -->
     <div id="filterSidebar">
       <h3>📍 지역 필터</h3>
       <select id="sidebarSido"></select>
       <select id="sidebarSigungu"></select>
       <select id="sidebarDong"></select>
       <button id="searchButton">🔍 검색</button>
-      <h3>👥 사용자 목록</h3>
       <div id="userList"></div>
     </div>
 
     <!-- ✅ 센서 대시보드 -->
     <div style="flex: 1;">
-      <h1>📡 ESP32 센서 상태 모니터링</h1>
+      <h1>발패드 사용자 상태값</h1>
       <div id="currentDateTime" style="text-align:center;margin-bottom:20px;font-weight:bold;"></div>
       <div style="text-align:center;margin-bottom:20px;">
         <button id="enableAudioBtn">🔊 웹 알림 소리 활성화</button>
       </div>
       <h2>🚨 긴급 센서</h2>
       <div id="mainContainer" class="sensor-main"></div>
-      <h2>📌 선택된 지역 센서</h2>
-      <div id="filteredContainer" class="sensor-container"></div>
       <h2>📋 전체 센서</h2>
       <div class="sensor-wrapper">
         <div class="toggle-row">
@@ -45,10 +41,10 @@
   <!-- 🔊 알림 사운드 -->
   <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display:none"></audio>
 
-  <!-- ✅ 자바스크립트 모듈 연결 -->
-  <script type="module" src="firebase.js"></script>
+  <!-- ✅ 기존 자바스크립트 모듈 -->
+  <script type="module" src="2025.6.16.js"></script>
 
-  <!-- 🕒 현재 시각 표시 -->
+  <!-- ✅ 현재 시각 표시 -->
   <script>
     function updateDateTime() {
       const now = new Date();
@@ -61,6 +57,36 @@
     }
     updateDateTime();
     setInterval(updateDateTime, 1000);
+  </script>
+
+  <!-- ✅ 검색 버튼 클릭 시 조건 확인 후 이동 -->
+  <script>
+    // 예시로 존재하는 지역만 미리 정의
+    const validSensorAreas = [
+      { sido: "대구광역시", sigungu: "달서구", dong: "감삼동" }
+      // 여기에 실제 존재하는 센서 지역을 추가하세요
+    ];
+
+    document.getElementById("searchButton").addEventListener("click", () => {
+      const sido = document.getElementById("sidebarSido").value;
+      const sigungu = document.getElementById("sidebarSigungu").value;
+      const dong = document.getElementById("sidebarDong").value;
+
+      if (sido && sigungu && dong) {
+        const matched = validSensorAreas.some(area =>
+          area.sido === sido && area.sigungu === sigungu && area.dong === dong
+        );
+
+        if (matched) {
+          const url = `2025.6.16-2.html?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}&dong=${encodeURIComponent(dong)}`;
+          window.location.href = url;
+        } else {
+          alert("검색 결과가 없습니다. 해당 지역의 센서 페이지가 존재하지 않습니다.");
+        }
+      } else {
+        alert("모든 지역 정보를 선택해주세요.");
+      }
+    });
   </script>
 </body>
 </html>
