@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>ESP32 센서 대시보드</title>
+  <link rel="stylesheet" href="2025.6.16-2.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div style="flex: 1;">
+    <h1 id="areaTitle" style="text-align:center;">발패드 사용자 상태값</h1>
+    <div id="currentDateTime" style="text-align:center;margin-bottom:20px;font-weight:bold;"></div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <button id="enableAudioBtn">🔊 웹 알림 소리 활성화</button>
+    </div>
+
+    <h2>🚨 긴급 센서</h2>
+    <div id="mainContainer" class="sensor-main"></div>
+
+    <h2>📋 전체 센서</h2>
+    <div class="sensor-wrapper">
+      <div class="toggle-row">
+        <button id="toggleButton">더보기 열기</button>
+      </div>
+      <div id="sensorContainer" class="sensor-container hidden"></div>
+    </div>
+  </div>
+
+  <!-- 🔊 알림 사운드 -->
+  <audio id="alertSoundTemplate" src="sounds/alert.mp3" preload="auto" style="display:none"></audio>
+
+  <!-- ⏰ 현재 시각 표시 -->
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const formatted = now.toLocaleString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+      document.getElementById('currentDateTime').textContent = `현재 시각: ${formatted}`;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    // ✅ 지역명 표시 (h1 동적 설정)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sido = urlParams.get("sido") || "";
+    const sigungu = urlParams.get("sigungu") || "";
+    const dong = urlParams.get("dong") || "";
+    const fullAddress = `${sido} ${sigungu} ${dong}`.trim();
+    document.getElementById("areaTitle").textContent = `${fullAddress} 발패드 사용자 상태값`;
+  </script>
+
+  <!-- ✅ 2페이지용 JS 로드 -->
+  <script type="module" src="2025.6.16-2.js"></script>
+</body>
+</html>
